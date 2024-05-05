@@ -17,6 +17,8 @@ I decided against a custom PCB and used standard components.
 
 *All required parts can be found in the corresponding BOM.*
 
+### *You can find pictures in the pictures folder.*
+
 ### *Mappings NO LiPo:*
 - PIN6 of Pi --> OLED SDA
 - PIN7 of Pi --> OLED SCL

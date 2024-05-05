@@ -6,6 +6,8 @@
   https://github.com/cecio/USBvalve
   It´s a nice Guy!
 
+  All changes can be found via tbfa and TryBreakFixAgain
+  
 *********************************************************************/
 
 /*********************************************************************

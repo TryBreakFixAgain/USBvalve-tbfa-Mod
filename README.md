@@ -40,7 +40,7 @@ Additional BOOTSEL Button form my Case Design
 - PIN28 (GND) of Pi --> Pushbutton
 
 
-### *Mappings LiPo (Promoroni Pico LiPo):*
+### *Mappings LiPo (Pimoroni Pico LiPo):*
 - PIN6 of Pi --> OLED SDA
 - PIN7 of Pi --> OLED SCL
 - PIN19 of Pi --> D+ of USB Host

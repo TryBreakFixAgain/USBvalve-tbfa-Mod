@@ -1,13 +1,11 @@
 /*********************************************************************
 
-  USBvalve TryBreakFixAgain MOD (Trafficlight)
+  USBvalve TryBreakFixAgain MOD (Trafficlight / LiPo[Pimoroni])
   
   Original written by Cesare Pizzi
   https://github.com/cecio/USBvalve
   It´s a nice Guy!
 
-  All changes can be found via tbfa and TryBreakFixAgain
-  
 *********************************************************************/
 
 /*********************************************************************
@@ -83,8 +81,23 @@ NeoPixelConnect pixels(tbfa_PixelPin, tbfa_PixelNum, pio0, 1);
 boolean tbfa_lightbreak = false;
 int tbfa_lightstatus = 0;
 
-// END TryBreakFixAgain MODS
+/* TryBreakFixAgain LiPo MOD
+ * Using a Pimoroni Pico LiPo https://shop.pimoroni.com/products/pimoroni-pico-lipo 
+ * Battery status on GPIO29 /  GPIO24 status if USB is connected or not
+ * change tbfa_full_battery and tbfa_empty_battery to your Battery
+ * Using a LP402025 +3.7V 150mAh https://shop.pimoroni.com/products/lipo-battery-pack?variant=20429081991
+ */
+const int tbfa_batPin = 29;
+const int tbfa_usbPower = 24;
+int tbfa_batValue = 0;
+float tbfa_conversion_factor = 3 * 3.3 / 65535;
+float tbfa_full_battery = 4.2;
+float tbfa_empty_battery = 3.4;
+int tbfa_charging = 0;
+int tbfa_batcount = 0;
+boolean tbfa_jumpbat = false;
 
+// END TryBreakFixAgain MODS
 //
 // BADUSB detector section
 //
@@ -156,7 +169,7 @@ bool activeState = false;
 //
 // USBvalve globals
 //
-#define VERSION "USBvalve - 0.18.0"
+#define VERSION "USBvalve-0.18.0 mod"
 boolean readme = false;
 boolean autorun = false;
 boolean written = false;
@@ -199,6 +212,10 @@ uint valid_hash = 2362816530;
 
 // Core 0 Setup: will be used for the USB mass device functions
 void setup() {
+  // START TryBreakFixAgain Battery readings config
+  analogReadResolution(16);
+  pinMode(tbfa_usbPower, INPUT);
+
   // START TryBreakFixAgain Language definitions
   tbfa_dictonary["selfok"][0] ="[+] Selftest: OK";
   tbfa_dictonary["selfko"][0] ="[!] Selftest: KO";
@@ -380,6 +397,7 @@ void loop() {
     printout("reset");
     swreset();
   }
+  batteryPack();
 }
 
 // Main Core1 loop: managing USB Host
@@ -535,6 +553,10 @@ void printout(const char *ctrl)
 {
   // TryBreakFixAgain MOD
   // Normal Printout
+  if(tbfa_batcount == 0){
+    delay(500);
+  }
+  tbfa_jumpbat=true;
   if(ctrl != "cls"){
     String str=tbfa_dictonary[ctrl][0];
     checkAndScroll();
@@ -548,7 +570,7 @@ void printout(const char *ctrl)
     display.setCursor(0, 16);
   }
   display.display();
-
+  tbfa_jumpbat=false;
   //START TryBreakFixAgain TrafficLight SETSTATUS
   int tbfa_led=tbfa_dictonary[ctrl][1];
   tbfa_trafficlight(tbfa_led);
@@ -910,3 +932,43 @@ void tuh_umount_cb(uint8_t dev_addr)
 }
 
 //END TryBreakFixAgain TrafficLight Functions
+void batteryPack() {
+    if (tbfa_batcount == 0) {
+        if (tbfa_jumpbat == false) {
+            tbfa_batValue = analogRead(tbfa_batPin);
+            float tbfa_voltage = tbfa_batValue * tbfa_conversion_factor;
+            float tbfa_percentage = 100 * ((tbfa_voltage - tbfa_empty_battery) / (tbfa_full_battery - tbfa_empty_battery));
+            if (tbfa_percentage > 100) {
+                tbfa_percentage = 100;
+            } else if (tbfa_percentage < 0) {
+                tbfa_percentage = 0;
+            }
+            int oldCursor = display.getCursorY();
+            display.setCursor(0, 0);
+            display.fillRect(0, 0, display.width(), 8, SSD1306_BLACK);
+            if (digitalRead(tbfa_usbPower) == 1) {
+                display.print("usbValve          USB");
+                tbfa_charging = 1;
+            } else {
+                display.print("usbValve");
+                int cleanprecent = tbfa_percentage;
+                if (cleanprecent >= 99) {
+                    display.print("         ");
+                } else if (cleanprecent >= 9) {
+                    display.print("          ");
+                } else {
+                    display.print("           ");
+                }
+
+                display.print(cleanprecent);
+                display.println("% ");
+                tbfa_charging = 0;
+            }
+            display.setCursor(0, oldCursor);
+            display.display();
+        }
+    } else if (tbfa_batcount == 10000) {
+        tbfa_batcount = -1;
+    }
+    tbfa_batcount++;
+}

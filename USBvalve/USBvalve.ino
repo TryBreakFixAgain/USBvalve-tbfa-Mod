@@ -1,5 +1,15 @@
 /*********************************************************************
 
+  USBvalve TryBreakFixAgain MOD (Trafficlight)
+  
+  Original written by Cesare Pizzi
+  https://github.com/cecio/USBvalve
+  It´s a nice Guy!
+
+*********************************************************************/
+
+/*********************************************************************
+
   USBvalve
   
   written by Cesare Pizzi
@@ -44,6 +54,34 @@
 #define LED_PIN   25
 
 #endif
+// START TryBreakFixAgain MODS
+
+/* TryBreakFixAgain Language MOD
+ * Using Json for later modifications
+ * definition in setup
+ * rebuilded the printout()
+ * variables, functions ... use the prefix tbfa_
+ */
+
+#include <ArduinoJson.h>
+JsonDocument tbfa_dictonary;
+
+/* TryBreakFixAgain TrafficLight MOD
+ * Using a Ws2812b DOT (https://www.amazon.com/dp/B088K8DVMQ) ON Pin 10 (GPIO7)
+ * Powerd on 3.3V at 5v the brightness is too high for me
+ *
+ * All TrafficLight Functions at the end of file.
+ * config in setup()
+ */
+#include <NeoPixelConnect.h>
+#define tbfa_PixelPin 7 // PixelData Pin
+#define tbfa_PixelNum 1 // Pixel count
+NeoPixelConnect pixels(tbfa_PixelPin, tbfa_PixelNum, pio0, 1);
+//Set and Protect LED Status
+boolean tbfa_lightbreak = false;
+int tbfa_lightstatus = 0;
+
+// END TryBreakFixAgain MODS
 
 //
 // BADUSB detector section
@@ -83,7 +121,7 @@ Arduino_GFX *gfx = new Arduino_GC9A01(bus, GFX_RST, 1 /* rotation */, true /* IP
 #define I2C_ADDRESS 0x3C  // 0X3C+SA0 - 0x3C or 0x3D
 #define RST_PIN -1        // Define proper RST_PIN if required.
 #define OLED_WIDTH  128
-#define OLED_HEIGHT 32    // 64 or 32 depending on the OLED
+#define OLED_HEIGHT 64    // 64 or 32 depending on the OLED
 
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, RST_PIN);
 
@@ -159,6 +197,38 @@ uint valid_hash = 2362816530;
 
 // Core 0 Setup: will be used for the USB mass device functions
 void setup() {
+  // START TryBreakFixAgain Language definitions
+  tbfa_dictonary["selfok"][0] ="[+] Selftest: OK";
+  tbfa_dictonary["selfko"][0] ="[!] Selftest: KO";
+  tbfa_dictonary["stop"][0] ="[!] Stopping...";
+  tbfa_dictonary["readme"][0] ="[!] README (R)";
+  tbfa_dictonary["autorun"][0] ="[+] AUTORUN (R)";
+  tbfa_dictonary["deleting"][0] = "[!] DELETING";
+  tbfa_dictonary["write"][0] ="[!] WRITING";
+  tbfa_dictonary["hidsend"][0] ="[!!] HID Sending data";
+  tbfa_dictonary["reset"][0] ="[+] RESETTING";
+  tbfa_dictonary["hiddev"][0] ="[!!] HID Device";
+  tbfa_dictonary["massdev"][0] ="[++] Mass Device";
+  tbfa_dictonary["cdcdev"][0] ="[++] CDC Device";
+  tbfa_dictonary["version"][0] =VERSION;
+  // END TryBreakFixAgain Language definitions
+  // START TryBreakFixAgain Trafficlight definitions
+  // values as integer 0= Off, 1=Blue , 2=Green , 3=Orange 4=Red
+  tbfa_dictonary["selfok"][1] = 2;
+  tbfa_dictonary["selfko"][1] = 4;
+  tbfa_dictonary["stop"][1] = 4;
+  tbfa_dictonary["readme"][1] = 3;
+  tbfa_dictonary["autorun"][1] = 2;
+  tbfa_dictonary["deleting"][1] = 3;
+  tbfa_dictonary["write"][1] =" 3";
+  tbfa_dictonary["hidsend"][1] = 4;
+  tbfa_dictonary["reset"][1] = 0;
+  tbfa_dictonary["hiddev"][1] = 4;
+  tbfa_dictonary["massdev"][1] = 2;
+  tbfa_dictonary["cdcdev"][1] = 2;
+  tbfa_dictonary["version"][1] = 0;
+  // END TryBreakFixAgain Language definitions
+
   // Change all the USB Pico settings
   TinyUSBDevice.setID(USB_VENDORID, USB_PRODUCTID);
   TinyUSBDevice.setProductDescriptor(USB_DESCRIPTOR);
@@ -224,13 +294,15 @@ void setup() {
 #endif
 
   cls();  // Clear display
-
+  // START TryBreakFixAgain TrafficLight LED-DEMO
+  tbfa_trafficlightstart();
+  // END TryBreakFixAgain TrafficLight LED-DEMO
   // Now outputs the result of the check
   if (computed_hash == valid_hash) {
-    printout("\n[+] Selftest: OK");
+    printout("selfok");
   } else {
-    printout("\n[!] Selftest: KO");
-    printout("\n[!] Stopping...");
+    printout("selfko");
+    printout("stop");
     while (1) {
       delay(1000);  // Loop forever
     }
@@ -263,7 +335,7 @@ void setup1() {
 void loop() {
 
   if (readme == true) {
-    printout("\n[!] README (R)");
+    printout("readme");
     readme = false;
 #if !defined(PIWATCH)
     gpio_put(LED_PIN, 0);         // Turn Off LED
@@ -271,12 +343,12 @@ void loop() {
   }
 
   if (autorun == true) {
-    printout("\n[+] AUTORUN (R)");
+    printout("autorun");
     autorun = false;
   }
 
   if (deleted == true && deleted_reported == false) {
-    printout("\n[!] DELETING");
+    printout("deleting");
     deleted = false;
     deleted_reported = true;
 #if !defined(PIWATCH)
@@ -285,7 +357,7 @@ void loop() {
   }
 
   if (written == true && written_reported == false) {
-    printout("\n[!] WRITING");
+    printout("write");
     written = false;
     written_reported = true;
 #if !defined(PIWATCH)
@@ -294,7 +366,7 @@ void loop() {
   }
 
   if (hid_sent == true && hid_reported == false) {
-    printout("\n[!!] HID Sending data");
+    printout("hidsend");
     hid_sent = false;
     hid_reported = true;
 #if !defined(PIWATCH)
@@ -303,7 +375,7 @@ void loop() {
   }
 
   if (BOOTSEL) {
-    printout("\n[+] RESETTING");
+    printout("reset");
     swreset();
   }
 }
@@ -403,10 +475,12 @@ bool msc_ready_callback(void) {
   return digitalRead(BTN_EJECT) != activeState;
 }
 #endif
-
+// START TryBreakFixAgain modifikated printout()
 #if defined(PIWATCH)
-void printout(const char *str)
+void printout(const char *ctrl)
 {
+  // TBFA MOD
+  String str=tbfa_dictonary[ctrl][0];
   int y;
 
   y = gfx->getCursorY();
@@ -424,13 +498,15 @@ void printout(const char *str)
     gfx->print(str);
   }
 }
+// END TryBreakFixAgain modifikated printout()
 #else
 
 void scrollUp(uint8_t pixels) {
   // Read the current content of the display, shift it up by 'pixels' rows
   display.startscrollright(0x00, 0x07); // Dummy values to initiate scroll
   display.stopscroll(); // Immediately stop to manually shift pixels in memory
-  for (int i = 0; i < display.height() - pixels; i++) {
+  // TryBreakFixAgain Mod for Static first Rows set i from 0 to 16
+  for (int i = 16; i < display.height() - pixels; i++) {
     for (int j = 0; j < display.width(); j++) {
       uint8_t color = display.getPixel(j, i + pixels);
       display.drawPixel(j, i, color);
@@ -452,13 +528,39 @@ void checkAndScroll() {
   }
 }
 
-void printout(const char *str)
+// START TryBreakFixAgain modifikated printout()
+void printout(const char *ctrl)
 {
-  checkAndScroll();
-  display.print(str);
+  // TryBreakFixAgain MOD
+  // Normal Printout
+  if(ctrl != "cls"){
+    String str=tbfa_dictonary[ctrl][0];
+    checkAndScroll();
+    display.println(str);
+  }else{
+    // Printout first 2 Rows on cls();
+    display.setCursor(0, 0);
+    display.fillRect(0, 0, display.width(), 16, SSD1306_BLACK);
+    display.print(String(tbfa_dictonary["version"][0]));
+    display.drawLine(0, 10, display.width(), 10, SSD1306_WHITE);
+    display.setCursor(0, 16);
+  }
   display.display();
+
+  //START TryBreakFixAgain TrafficLight SETSTATUS
+  int tbfa_led=tbfa_dictonary[ctrl][1];
+  tbfa_trafficlight(tbfa_led);
+  if(tbfa_led == 4){
+    tbfa_lightbreak = true;
+  }
+  if(ctrl == "selfok" || ctrl == "autorun"){
+    delay(2000);
+    tbfa_trafficlight(0);
+  }
+  //END TryBreakFixAgain TrafficLight SETSTATUS 
 }
 #endif
+// END TryBreakFixAgain modifikated printout()
 
 #if defined(PIWATCH)
 // Clear display
@@ -475,8 +577,8 @@ void cls(void) {
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
-  printout(VERSION);
-  printout("\n-----------------");
+  // TryBreakFixAgain First Two Rows Mod
+  printout("cls");
 }
 #endif
 
@@ -539,7 +641,7 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
 
   tuh_vid_pid_get(dev_addr, &vid, &pid);
 
-  printout("\n[!!] HID Device");
+  printout("hiddev");
 #if !defined(PIWATCH)
     gpio_put(LED_PIN, 0);         // Turn Off LED
 #endif
@@ -721,7 +823,7 @@ void cursor_movement(int8_t x, int8_t y, int8_t wheel) {
 
 // Invoked when a device with MassStorage interface is mounted
 void tuh_msc_mount_cb(uint8_t dev_addr) {
-  printout("\n[++] Mass Device");
+  printout("massdev");
   SerialTinyUSB.printf("Mass Device attached, address = %d\r\n", dev_addr);
 }
 
@@ -732,7 +834,7 @@ void tuh_msc_umount_cb(uint8_t dev_addr) {
 
 // Invoked when a device with CDC (Communication Device Class) interface is mounted
 void tuh_cdc_mount_cb(uint8_t idx) {
-  printout("\n[++] CDC Device");
+  printout("cdcdev");
   SerialTinyUSB.printf("CDC Device attached, idx = %d\r\n", idx);
 }
 
@@ -742,3 +844,67 @@ void tuh_cdc_umount_cb(uint8_t idx) {
 }
 
 // END of OTHER Host devices detector section
+
+
+// START TryBreakFixAgain TrafficLight Functions
+void tbfa_trafficlight(int tlight){
+  
+  if(tbfa_lightbreak == false){
+    if(tlight == 1 && tbfa_lightstatus==2){
+      tlight=2;
+    }
+    if(tlight == 1 && tbfa_lightstatus==4){
+      tlight=4;
+    }
+    tbfa_lightstatus = tlight;
+    switch (tlight) {
+      case 1:
+        pixels.neoPixelFill(0, 0, 255, true);
+        break;
+      case 2:
+        pixels.neoPixelFill(0, 255, 0, true);
+        break;
+      case 3:
+        pixels.neoPixelFill(255, 188, 0, true);
+        break;
+      case 4:
+        pixels.neoPixelFill(255, 0, 0, true);
+        break;
+      default:
+        pixels.neoPixelFill(0, 0, 0, true);
+        pixels.neoPixelClear();
+        break;
+    }
+  }
+}
+
+void tbfa_trafficlightstart(){
+  tbfa_trafficlight(1);
+  delay(300);
+  tbfa_trafficlight(2);
+  delay(300);
+  tbfa_trafficlight(3);
+  delay(300);
+  tbfa_trafficlight(4);
+  delay(300);
+  tbfa_trafficlight(1);
+  delay(300);
+  tbfa_trafficlight(0);
+}
+
+/// DETECT GENERAL MOUNTING
+void tuh_mount_cb (uint8_t dev_addr)
+{
+  tbfa_trafficlight(1);
+}
+
+/// DETECT GENERAL UNMOUNTING
+void tuh_umount_cb(uint8_t dev_addr)
+{
+  //wait for 0.5 sec then Turn off LED;
+  delay(500);
+  tbfa_lightbreak = false;
+  tbfa_trafficlight(0);
+}
+
+//END TryBreakFixAgain TrafficLight Functions

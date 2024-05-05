@@ -28,7 +28,9 @@ RUN cd /app \
     && arduino-cli lib install "Adafruit SSD1306" \
     && arduino-cli lib install "Pico PIO USB" \
     && arduino-cli lib install "XxHash_arduino" \
-    && arduino-cli lib install "GFX Library for Arduino"
+    && arduino-cli lib install "GFX Library for Arduino" \
+    && arduino-cli lib install "ArduinoJson" \
+    && arduino-cli lib install "NeoPixelConnect"
 
 # Compilation setup
 RUN echo  "#!/bin/bash" > /app/entrypoint.sh \

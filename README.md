@@ -35,7 +35,7 @@ Depending on the LED you may have to use 5V.
 - PIN28 (GND) of Pi --> GND of Ws2812b DOT
 - PIN10 of Pi --> DIN of Ws2812b DOT
  
-Additional BOOTSEL Button form y Case Design
+Additional BOOTSEL Button form my Case Design
 - TP6 of Pi (Bottom side Testpoint) --> Pushbutton
 - PIN28 (GND) of Pi --> Pushbutton
 

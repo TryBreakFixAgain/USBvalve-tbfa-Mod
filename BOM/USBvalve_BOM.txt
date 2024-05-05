@@ -1,0 +1,11 @@
+Raspberry Pico:		https://www.amazon.com/dp/B0BK9CTMSV
+
+Display SSD1306 I2C	https://www.amazon.com/dp/B0BWJFVYZR
+
+USB-Connector:		https://www.amazon.com/dp/B07VBRTDVF
+
+WS2812B DOT:		https://www.amazon.com/dp/B01DC0J3UM
+
+Pushbutton:		https://www.amazon.com/dp/B01CGMP9GY
+
+

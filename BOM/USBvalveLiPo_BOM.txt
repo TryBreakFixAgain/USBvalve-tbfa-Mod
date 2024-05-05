@@ -1,0 +1,12 @@
+Pimoroni Pico LiPo:	https://shop.pimoroni.com/products/pimoroni-pico-lipo
+
+LiPo LP402025 +3.7V 150mAh:  https://shop.pimoroni.com/products/lipo-battery-pack?variant=20429081991
+
+Display SSD1306 I2C	https://www.amazon.com/dp/B0BWJFVYZR
+
+USB-Connector:		https://www.amazon.com/dp/B07VBRTDVF
+
+WS2812B DOT:		https://www.amazon.com/dp/B01DC0J3UM
+
+
+

@@ -167,28 +167,28 @@ STL-Files could be fond in the STL folder.
 
 ### *Firmware Naming:*
 >
->USBvalve_tbfa-x.xx.x-32NoMod = No Mods, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32NoMod = No Mods, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64NoMod = No Mods, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32Tr = TrafficLight, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32Tr = TrafficLight, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64Tr = TrafficLight, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32SdTr = SD-Logger, TrafficLight, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32SdTr = SD-Logger, TrafficLight, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64SdTr = SD-Logger, TrafficLight, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32Sd = SD-Logger, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32Sd = SD-Logger, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64Sd = SD-Logger, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32LiSdTr = LiPo, SD-Logger, TrafficLight, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32LiSdTr = LiPo, SD-Logger, TrafficLight, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64LiSdTr = LiPo, SD-Logger, TrafficLight, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32LiSd = LiPo, SD-Logger, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32LiSd = LiPo, SD-Logger, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64LiSd = LiPo, SD-Logger, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32LiTr = LiPo, TrafficLight, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32LiTr = LiPo, TrafficLight, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64LiTr = LiPo, TrafficLight, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32Li = LiPo, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32Li = LiPo, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64Li = LiPo, 32Pixel Display
 >
 

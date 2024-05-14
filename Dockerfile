@@ -1,9 +1,9 @@
 #
 # To Build:
-#       docker build -t usbvalve/arduino-cli .
+#       docker build -t usbvalve_tbfa/arduino-cli .
 #
 # To Run:
-#       docker run --rm --name usbvalve -v $PWD:/mnt usbvalve/arduino-cli /mnt/USBvalve
+#       docker run --rm --name usbvalve_tbfa -v $PWD:/mnt usbvalve_tbfa/arduino-cli /mnt/USBvalve_tbfa
 #
 
 FROM ubuntu:22.04
@@ -30,12 +30,13 @@ RUN cd /app \
     && arduino-cli lib install "XxHash_arduino" \
     && arduino-cli lib install "GFX Library for Arduino" \
     && arduino-cli lib install "ArduinoJson" \
-    && arduino-cli lib install "NeoPixelConnect"
+    && arduino-cli lib install "NeoPixelConnect" \
+    && arduino-cli lib uninstall "SdFat - Adafruit Fork"
 
 # Compilation setup
 RUN echo  "#!/bin/bash" > /app/entrypoint.sh \
     && echo  "export PATH=\$PATH:/app/arduino-cli/bin" >> /app/entrypoint.sh \
-    && echo  "arduino-cli compile --fqbn rp2040:rp2040:rpipico --board-options \"usbstack=tinyusb\" --board-options \"freq=120\" --output-dir \"/mnt/USBvalve_out\" \"\$1\"" >> /app/entrypoint.sh \
+    && echo  "arduino-cli compile --fqbn rp2040:rp2040:rpipico --board-options \"usbstack=tinyusb\" --board-options \"freq=120\" --output-dir \"/mnt/USBvalve_tbfa_out\" \"\$1\"" >> /app/entrypoint.sh \
     && chmod +x /app/entrypoint.sh
 
 ENTRYPOINT ["/app/entrypoint.sh"]

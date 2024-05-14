@@ -31,31 +31,37 @@
   any redistribution
 *********************************************************************/
 
-// Uncomment the following to compile for the RP2040 based TFT round display
-// https://www.raspberrypi.com/news/how-to-build-your-own-raspberry-pi-watch/
-//#define PIWATCH
+
+// Uncomment one ore more defines to compile the MODS you want to use
+
+/* 
+ * #define TBFA_TRAFFIC = TrafficLight Mod
+ * #define TBFA_LIPO = Pimoroni Pico LiPo Battery Mod
+ * #define TBFA_SDLOG = SD-CARD Logger Mod
+ * #define TBFA_ONBORDLED = Use Onbord LED on Pico
+ * #define TBFA_ONBORDLEDW = Use Onbord LED on PicoW
+ */
+
+//#define TBFA_TRAFFIC
+//#define TBFA_LIPO
+//#define TBFA_SDLOG
+//#define TBFA_ONBORDLED
+//#define TBFA_ONBORDLEDW
 
 #include <pio_usb.h>
 #include "Adafruit_TinyUSB.h"
 #include <XxHash_arduino.h>
 #include <pico/stdlib.h>
-
-#if defined(PIWATCH)
-
-#include <Arduino_GFX_Library.h>
-#include "background.h"
-
-#else
-
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+#if defined(TBFA_ONBORDLED)
 // LED Pin. If solid GREEN everything is OK, otherwise it will be put OFF
 #define LED_PIN   25
-
 #endif
+
 // START TryBreakFixAgain MODS
 
 /* TryBreakFixAgain Language MOD
@@ -67,7 +73,9 @@
 
 #include <ArduinoJson.h>
 JsonDocument tbfa_dictonary;
+char bufferx[200];
 
+#if defined(TBFA_TRAFFIC)
 /* TryBreakFixAgain TrafficLight MOD
  * Using a Ws2812b DOT (https://www.amazon.com/dp/B088K8DVMQ) ON Pin 10 (GPIO7)
  * Powerd on 3.3V at 5v the brightness is too high for me
@@ -75,6 +83,7 @@ JsonDocument tbfa_dictonary;
  * All TrafficLight Functions at the end of file.
  * config in setup()
  */
+
 #include <NeoPixelConnect.h>
 #define tbfa_PixelPin 7 // PixelData Pin
 #define tbfa_PixelNum 1 // Pixel count
@@ -82,6 +91,38 @@ NeoPixelConnect pixels(tbfa_PixelPin, tbfa_PixelNum, pio0, 1);
 //Set and Protect LED Status
 boolean tbfa_lightbreak = false;
 int tbfa_lightstatus = 0;
+#endif
+
+#if defined(TBFA_LIPO)
+/* TryBreakFixAgain LiPo MOD
+ * Using a Pimoroni Pico LiPo https://shop.pimoroni.com/products/pimoroni-pico-lipo 
+ * Battery status on GPIO29 /  GPIO24 status if USB is connected or not
+ * change tbfa_full_battery and tbfa_empty_battery to your Battery
+ * Using a LP402025 +3.7V 150mAh https://shop.pimoroni.com/products/lipo-battery-pack?variant=20429081991
+ */
+const int tbfa_batPin = 29;
+const int tbfa_usbPower = 24;
+int tbfa_batValue = 0;
+float tbfa_conversion_factor = 3 * 3.3 / 65535;
+float tbfa_full_battery = 4.2;
+float tbfa_empty_battery = 3.4;
+int tbfa_charging = 0;
+int tbfa_batcount = 0;
+boolean tbfa_jumpbat = false;
+#endif
+
+
+#if defined(TBFA_SDLOG)
+/* TryBreakFixAgain SD-CARD Logger MOD
+ * Using a Waveshare Micro SD Board https://www.amazon.com/dp/B00KM6WO0Q
+ */
+const int _MISO = 16;  // AKA SPI RX
+const int _MOSI = 19;  // AKA SPI TX
+const int _SCK = 18;
+const int _CS = 17;
+#include <SD.h>
+File dataLog;
+#endif
 
 // END TryBreakFixAgain MODS
 
@@ -104,30 +145,14 @@ Adafruit_USBH_Host USBHost;
 
 // END of BADUSB detector section
 
-// Define vars for OLED screen
-#if defined(PIWATCH)
-
-#define GFX_DC    8
-#define GFX_CS    9
-#define GFX_MOSI 11
-#define GFX_CLK  10
-#define GFX_RST  12
-#define GFX_MISO 12
-#define GFX_BL   25     // Backlight
-
-Arduino_DataBus *bus = new Arduino_RPiPicoSPI(GFX_DC, GFX_CS, GFX_CLK, GFX_MOSI, GFX_MISO, spi1 /* spi */);
-Arduino_GFX *gfx = new Arduino_GC9A01(bus, GFX_RST, 1 /* rotation */, true /* IPS */);
-
-#else
 
 #define I2C_ADDRESS 0x3C  // 0X3C+SA0 - 0x3C or 0x3D
 #define RST_PIN -1        // Define proper RST_PIN if required.
 #define OLED_WIDTH  128
-#define OLED_HEIGHT 64    // 64 or 32 depending on the OLED
+#define OLED_HEIGHT 32    // 64 or 32 depending on the OLED
 
 Adafruit_SSD1306 display(OLED_WIDTH, OLED_HEIGHT, &Wire, RST_PIN);
 
-#endif
 
 // Define the dimension of RAM DISK. We have a "real" one (for which
 // a real array is created) and a "fake" one, presented to the OS
@@ -156,7 +181,7 @@ bool activeState = false;
 //
 // USBvalve globals
 //
-#define VERSION "USBvalve - 0.18.0"
+#define VERSION "USBvalve-0.18.1 Mod"
 boolean readme = false;
 boolean autorun = false;
 boolean written = false;
@@ -213,7 +238,12 @@ void setup() {
   tbfa_dictonary["massdev"][0] ="[++] Mass Device";
   tbfa_dictonary["cdcdev"][0] ="[++] CDC Device";
   tbfa_dictonary["version"][0] =VERSION;
+  tbfa_dictonary["cardok"][0] ="[+] SD OK";
+  tbfa_dictonary["cardko"][0] ="[!] SD ERROR";
+  tbfa_dictonary["bigfile"][0] ="[!] BIG LOG";
   // END TryBreakFixAgain Language definitions
+
+#if defined(TBFA_TRAFFIC)
   // START TryBreakFixAgain Trafficlight definitions
   // values as integer 0= Off, 1=Blue , 2=Green , 3=Orange 4=Red
   tbfa_dictonary["selfok"][1] = 2;
@@ -229,8 +259,11 @@ void setup() {
   tbfa_dictonary["massdev"][1] = 2;
   tbfa_dictonary["cdcdev"][1] = 2;
   tbfa_dictonary["version"][1] = 0;
+  tbfa_dictonary["cardok"][1] = 0;
+  tbfa_dictonary["cardko"][1] = 0;
+  tbfa_dictonary["bigfile"][1] = 3;
   // END TryBreakFixAgain Language definitions
-
+#endif
   // Change all the USB Pico settings
   TinyUSBDevice.setID(USB_VENDORID, USB_PRODUCTID);
   TinyUSBDevice.setProductDescriptor(USB_DESCRIPTOR);
@@ -273,32 +306,21 @@ void setup() {
   }
 
   // Screen Init
-#if defined(PIWATCH)
-  gfx->begin();
-  pinMode(GFX_BL, OUTPUT);
-  digitalWrite(GFX_BL, HIGH);         // Backlight on
-  gfx->fillScreen(BLACK);             // Clear screen
-  gfx->draw16bitRGBBitmap(10,0,background,210,210);    // Draw background
-  delay(2000);
-#else
 #if RST_PIN >= 0
   display.begin(SSD1306_SWITCHCAPVCC, I2C_ADDRESS, RST_PIN);
 #else
   display.begin(SSD1306_SWITCHCAPVCC, I2C_ADDRESS);
 #endif
-#endif 
 
-#if defined(PIWATCH)
-  gfx->setTextSize(1);
-  gfx->setTextColor(MAGENTA);
-#else
   display.setTextSize(1);
-#endif
-
   cls();  // Clear display
+
+#if defined(TBFA_TRAFFIC)
   // START TryBreakFixAgain TrafficLight LED-DEMO
   tbfa_trafficlightstart();
   // END TryBreakFixAgain TrafficLight LED-DEMO
+#endif
+
   // Now outputs the result of the check
   if (computed_hash == valid_hash) {
     printout("selfok");
@@ -310,12 +332,47 @@ void setup() {
     }
   }
 
-#if !defined(PIWATCH)
+#if defined(TBFA_SDLOG)
+  // START TryBreakFixAgain SD-CARD config & check
+  SPI.setRX(_MISO);
+  SPI.setTX(_MOSI);
+  SPI.setSCK(_SCK);
+  if (!SD.begin(_CS)) {
+    printout("cardko");
+    delay(500);
+    SerialTinyUSB.println("Card failed, or not present");  
+  }else{
+    printout("cardok");
+    delay(500);
+    SerialTinyUSB.println("card initialized.");
+    if (SD.exists("datalog.txt")) {
+      File fproof;
+      fproof=SD.open("datalog.txt");
+      Serial.print((int)fproof.size());
+      if((int)fproof.size() > 5242880){
+        printout("bigfile");
+        SerialTinyUSB.println("datalog.txt bigger then 5MB.");
+      }
+      fproof.close();
+    }
+    tbfa_datalogger("\r\n\r\n----------NEW SESSION----------\r\n\r\n", 0);
+  }
+  // END TryBreakFixAgain SD-CARD config & check
+  
+#endif
+
+#if defined(TBFA_ONBORDLED)
   // Set up led PIN
   gpio_init(LED_PIN);
   gpio_set_dir(LED_PIN, GPIO_OUT);
   gpio_put(LED_PIN, 1);
 #endif
+#if defined(TBFA_ONBORDLEDW)
+  // Set up led PIN PicoW
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH);
+#endif
+
 }
 
 // Core 1 Setup: will be used for the USB host functions for BADUSB detector
@@ -339,9 +396,14 @@ void loop() {
   if (readme == true) {
     printout("readme");
     readme = false;
-#if !defined(PIWATCH)
+
+#if defined(TBFA_ONBORDLED)
     gpio_put(LED_PIN, 0);         // Turn Off LED
 #endif
+#if defined(TBFA_ONBORDLEDW)
+    digitalWrite(LED_BUILTIN, LOW);         // Turn Off LED
+#endif
+
   }
 
   if (autorun == true) {
@@ -353,33 +415,53 @@ void loop() {
     printout("deleting");
     deleted = false;
     deleted_reported = true;
-#if !defined(PIWATCH)
+
+#if defined(TBFA_ONBORDLED)
     gpio_put(LED_PIN, 0);         // Turn Off LED
 #endif
+#if defined(TBFA_ONBORDLEDW)
+    digitalWrite(LED_BUILTIN, LOW);         // Turn Off LED
+#endif
+
   }
 
   if (written == true && written_reported == false) {
     printout("write");
     written = false;
     written_reported = true;
-#if !defined(PIWATCH)
+
+#if defined(TBFA_ONBORDLED)
     gpio_put(LED_PIN, 0);         // Turn Off LED
 #endif
+#if defined(TBFA_ONBORDLEDW)
+    digitalWrite(LED_BUILTIN, LOW);         // Turn Off LED
+#endif
+
   }
 
   if (hid_sent == true && hid_reported == false) {
     printout("hidsend");
     hid_sent = false;
     hid_reported = true;
-#if !defined(PIWATCH)
+
+#if defined(TBFA_ONBORDLED)
     gpio_put(LED_PIN, 0);         // Turn Off LED
 #endif
+#if defined(TBFA_ONBORDLEDW)
+    digitalWrite(LED_BUILTIN, LOW);         // Turn Off LED
+#endif
+
   }
 
   if (BOOTSEL) {
     printout("reset");
     swreset();
   }
+#if defined(TBFA_LIPO)
+// START TryBreakFixAgain Battery check
+  tbfa_batteryPack();
+// END TryBreakFixAgain Battery check
+#endif
 }
 
 // Main Core1 loop: managing USB Host
@@ -410,14 +492,14 @@ int32_t msc_read_callback(uint32_t lba, void* buffer, uint32_t bufsize) {
     memcpy(buffer, addr, bufsize);
   }
 
-  SerialTinyUSB.print("Read LBA: ");
-  SerialTinyUSB.print(lba);
-  SerialTinyUSB.print("   Size: ");
-  SerialTinyUSB.println(bufsize);
+  tbfa_print(String("Read LBA: "));
+  tbfa_print(String(lba));
+  tbfa_print(String("   Size: "));
+  tbfa_println(String(bufsize));
   if (lba < DISK_BLOCK_NUM - 1) {
     hexDump(msc_disk[lba], MAX_DUMP_BYTES);
   }
-  SerialTinyUSB.flush();
+  tbfa_flush();
 
   return bufsize;
 }
@@ -451,14 +533,14 @@ int32_t msc_write_callback(uint32_t lba, uint8_t* buffer, uint32_t bufsize) {
     memcpy(addr, buffer, bufsize);
   }
 
-  SerialTinyUSB.print("Write LBA: ");
-  SerialTinyUSB.print(lba);
-  SerialTinyUSB.print("   Size: ");
-  SerialTinyUSB.println(bufsize);
+  tbfa_print(String("Write LBA: "));
+  tbfa_print(String(lba));
+  tbfa_print(String("   Size: "));
+  tbfa_println(String(bufsize));
   if (lba < DISK_BLOCK_NUM - 1) {
     hexDump(msc_disk[lba], MAX_DUMP_BYTES);
   }
-  SerialTinyUSB.flush();
+  tbfa_flush();
 
   return bufsize;
 }
@@ -477,31 +559,7 @@ bool msc_ready_callback(void) {
   return digitalRead(BTN_EJECT) != activeState;
 }
 #endif
-// START TryBreakFixAgain modifikated printout()
-#if defined(PIWATCH)
-void printout(const char *ctrl)
-{
-  // TBFA MOD
-  String str=tbfa_dictonary[ctrl][0];
-  int y;
 
-  y = gfx->getCursorY();
-  // Check if we reached the end of the printable area
-  if (y > 120) {
-    cls();
-    y = gfx->getCursorY();
-  }
-  gfx->setCursor(70, y+10);
-
-  // Skip the newline at the beginning if used
-  if (str[0] == '\n') {
-    gfx->print(str+1);
-  } else {
-    gfx->print(str);
-  }
-}
-// END TryBreakFixAgain modifikated printout()
-#else
 
 void scrollUp(uint8_t pixels) {
   // Read the current content of the display, shift it up by 'pixels' rows
@@ -549,6 +607,7 @@ void printout(const char *ctrl)
   }
   display.display();
 
+#if defined(TBFA_TRAFFIC)
   //START TryBreakFixAgain TrafficLight SETSTATUS
   int tbfa_led=tbfa_dictonary[ctrl][1];
   tbfa_trafficlight(tbfa_led);
@@ -560,20 +619,12 @@ void printout(const char *ctrl)
     tbfa_trafficlight(0);
   }
   //END TryBreakFixAgain TrafficLight SETSTATUS 
-}
 #endif
+
+}
 // END TryBreakFixAgain modifikated printout()
 
-#if defined(PIWATCH)
-// Clear display
-void cls(void) {
-  gfx->fillRoundRect(60, 70, 140, 75, 10, gfx->color565(0, 0, 0));
-  gfx->setCursor(70, 80);
-  gfx->print(VERSION);
-  gfx->setCursor(70, 90);
-  gfx->print("-----------------");
-}
-#else
+
 // Clear display
 void cls(void) {
   display.clearDisplay();
@@ -582,7 +633,7 @@ void cls(void) {
   // TryBreakFixAgain First Two Rows Mod
   printout("cls");
 }
-#endif
+
 
 // HexDump
 void hexDump(unsigned char* data, size_t size) {
@@ -592,8 +643,8 @@ void hexDump(unsigned char* data, size_t size) {
 
   for (i = 0; i < size; ++i) {
 
-    SerialTinyUSB.print(data[i] >> 4, HEX);
-    SerialTinyUSB.print(data[i] & 0x0F, HEX);
+    tbfa_print(String(data[i] >> 4, HEX));
+    tbfa_print(String(data[i] & 0x0F, HEX));
 
     if ((data)[i] >= ' ' && (data)[i] <= '~') {
       asciitab[i % 16] = (data)[i];
@@ -601,23 +652,23 @@ void hexDump(unsigned char* data, size_t size) {
       asciitab[i % 16] = '.';
     }
     if ((i + 1) % 8 == 0 || i + 1 == size) {
-      SerialTinyUSB.print(" ");
+      tbfa_print(" ");
       if ((i + 1) % 16 == 0) {
-        SerialTinyUSB.println(asciitab);
+        tbfa_println(asciitab);
       } else if (i + 1 == size) {
         asciitab[(i + 1) % 16] = '\0';
         if ((i + 1) % 16 <= 8) {
-          SerialTinyUSB.print(" ");
+          tbfa_print(" ");
         }
         for (j = (i + 1) % 16; j < 16; ++j) {
-          SerialTinyUSB.print("   ");
+          tbfa_print("   ");
         }
-        SerialTinyUSB.print("|  ");
-        SerialTinyUSB.println(asciitab);
+        tbfa_print("|  ");
+        tbfa_println(String(asciitab));
       }
     }
   }
-  SerialTinyUSB.println();
+  tbfa_println("");
 }
 
 // Reset the Pico
@@ -644,22 +695,31 @@ void tuh_hid_mount_cb(uint8_t dev_addr, uint8_t instance, uint8_t const* desc_re
   tuh_vid_pid_get(dev_addr, &vid, &pid);
 
   printout("hiddev");
-#if !defined(PIWATCH)
+
+#if defined(TBFA_ONBORDLED)
     gpio_put(LED_PIN, 0);         // Turn Off LED
 #endif
+#if defined(TBFA_ONBORDLEDW)
+    digitalWrite(LED_BUILTIN, LOW);         // Turn Off LED
+#endif
 
-  SerialTinyUSB.printf("HID device address = %d, instance = %d mounted\r\n", dev_addr, instance);
-  SerialTinyUSB.printf("VID = %04x, PID = %04x\r\n", vid, pid);
-  SerialTinyUSB.printf("HID Interface Protocol = %s\r\n", protocol_str[itf_protocol]);
+  sprintf(bufferx, "HID device address = %d, instance = %d mounted", dev_addr, instance);
+  tbfa_println(bufferx);
+  sprintf(bufferx, "VID = %04x, PID = %04x", vid, pid);
+  tbfa_println(bufferx);
+  sprintf(bufferx, "HID Interface Protocol = %s", protocol_str[itf_protocol]);
+  tbfa_println(bufferx);
 
   if (!tuh_hid_receive_report(dev_addr, instance)) {
-    SerialTinyUSB.printf("Error: cannot request to receive report\r\n");
+    tbfa_println("Error: cannot request to receive report");
   }
 }
 
 // Invoked when device with hid interface is un-mounted
 void tuh_hid_umount_cb(uint8_t dev_addr, uint8_t instance) {
-  SerialTinyUSB.printf("HID device address = %d, instance = %d unmounted\r\n", dev_addr, instance);
+  sprintf(bufferx, "HID device address = %d, instance = %d unmounted", dev_addr, instance);
+  tbfa_println("");
+  tbfa_println(bufferx);
 
   // Reset HID sent flag
   hid_sent = false;
@@ -681,7 +741,7 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
   switch (itf_protocol) {
     case HID_ITF_PROTOCOL_KEYBOARD:
       if (kbd_printed == false) {
-        SerialTinyUSB.println("HID received keyboard report");
+        tbfa_println("HID received keyboard report");
         kbd_printed = true;
         mouse_printed = false;
       }
@@ -690,7 +750,7 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
 
     case HID_ITF_PROTOCOL_MOUSE:
       if (kbd_printed == false) {
-        SerialTinyUSB.println("HID receive mouse report");
+        tbfa_println("HID receive mouse report");
         mouse_printed = true;
         kbd_printed = false;
       }
@@ -704,7 +764,7 @@ void tuh_hid_report_received_cb(uint8_t dev_addr, uint8_t instance, uint8_t cons
   }
 
   if (!tuh_hid_receive_report(dev_addr, instance)) {
-    SerialTinyUSB.println("Error: cannot request to receive report");
+    tbfa_println("Error: cannot request to receive report");
   }
 }
 
@@ -733,17 +793,18 @@ static void process_kbd_report(hid_keyboard_report_t const* report) {
         uint8_t ch = keycode2ascii[report->keycode[i]][is_shift ? 1 : 0];
 
         bool const is_gui = report->modifier & (KEYBOARD_MODIFIER_LEFTGUI | KEYBOARD_MODIFIER_RIGHTGUI);
-        if (is_gui == true) SerialTinyUSB.printf("GUI+");
+        if (is_gui == true) tbfa_print("GUI+");
 
         bool const is_alt = report->modifier & (KEYBOARD_MODIFIER_LEFTALT | KEYBOARD_MODIFIER_RIGHTALT);
-        if (is_alt == true) SerialTinyUSB.printf("ALT+");
+        if (is_alt == true) tbfa_print("ALT+");
 
         // Check for "special" keys
         check_special_key(report->keycode[i]);
 
         // Finally, print out the decoded char
-        SerialTinyUSB.printf("%c", ch);
-        if (ch == '\r') SerialTinyUSB.print("\n");  // New line for enter
+        sprintf(bufferx, "%c", ch);
+        tbfa_print(bufferx);
+        if (ch == '\r') tbfa_print("\n");  // New line for enter
 
         fflush(stdout);  // flush right away, else nanolib will wait for newline
       }
@@ -755,47 +816,47 @@ static void process_kbd_report(hid_keyboard_report_t const* report) {
 
 static void check_special_key(uint8_t code) {
 
-  if (code == HID_KEY_ARROW_RIGHT) SerialTinyUSB.print("<ARROWRIGHT>");
-  if (code == HID_KEY_ARROW_LEFT) SerialTinyUSB.print("<ARROWLEFT>");
-  if (code == HID_KEY_ARROW_DOWN) SerialTinyUSB.print("<ARROWDOWN>");
-  if (code == HID_KEY_ARROW_UP) SerialTinyUSB.print("<ARROWUP>");
-  if (code == HID_KEY_HOME) SerialTinyUSB.print("<HOME>");
-  if (code == HID_KEY_KEYPAD_1) SerialTinyUSB.print("<KEYPAD_1>");
-  if (code == HID_KEY_KEYPAD_2) SerialTinyUSB.print("<KEYPAD_2>");
-  if (code == HID_KEY_KEYPAD_3) SerialTinyUSB.print("<KEYPAD_3>");
-  if (code == HID_KEY_KEYPAD_4) SerialTinyUSB.print("<KEYPAD_4>");
-  if (code == HID_KEY_KEYPAD_5) SerialTinyUSB.print("<KEYPAD_5>");
-  if (code == HID_KEY_KEYPAD_6) SerialTinyUSB.print("<KEYPAD_6>");
-  if (code == HID_KEY_KEYPAD_7) SerialTinyUSB.print("<KEYPAD_7>");
-  if (code == HID_KEY_KEYPAD_8) SerialTinyUSB.print("<KEYPAD_8>");
-  if (code == HID_KEY_KEYPAD_9) SerialTinyUSB.print("<KEYPAD_9>");
-  if (code == HID_KEY_KEYPAD_0) SerialTinyUSB.print("<KEYPAD_0>");
-  if (code == HID_KEY_F1) SerialTinyUSB.print("<F1>");
-  if (code == HID_KEY_F2) SerialTinyUSB.print("<F2>");
-  if (code == HID_KEY_F3) SerialTinyUSB.print("<F3>");
-  if (code == HID_KEY_F4) SerialTinyUSB.print("<F4>");
-  if (code == HID_KEY_F5) SerialTinyUSB.print("<F5>");
-  if (code == HID_KEY_F6) SerialTinyUSB.print("<F6>");
-  if (code == HID_KEY_F7) SerialTinyUSB.print("<F7>");
-  if (code == HID_KEY_F8) SerialTinyUSB.print("<F8>");
-  if (code == HID_KEY_F9) SerialTinyUSB.print("<F9>");
-  if (code == HID_KEY_F10) SerialTinyUSB.print("<F10>");
-  if (code == HID_KEY_F11) SerialTinyUSB.print("<F11>");
-  if (code == HID_KEY_F12) SerialTinyUSB.print("<F12>");
-  if (code == HID_KEY_PRINT_SCREEN) SerialTinyUSB.print("<PRNT>");
-  if (code == HID_KEY_SCROLL_LOCK) SerialTinyUSB.print("<SCRLL>");
-  if (code == HID_KEY_PAUSE) SerialTinyUSB.print("<PAUSE>");
-  if (code == HID_KEY_INSERT) SerialTinyUSB.print("<INSERT>");
-  if (code == HID_KEY_PAGE_UP) SerialTinyUSB.print("<PAGEUP>");
-  if (code == HID_KEY_DELETE) SerialTinyUSB.print("<DEL>");
-  if (code == HID_KEY_END) SerialTinyUSB.print("<END>");
-  if (code == HID_KEY_PAGE_DOWN) SerialTinyUSB.print("<PAGEDOWN>");
-  if (code == HID_KEY_NUM_LOCK) SerialTinyUSB.print("<ARROWRIGHT>");
-  if (code == HID_KEY_KEYPAD_DIVIDE) SerialTinyUSB.print("<KEYPAD_DIV>");
-  if (code == HID_KEY_KEYPAD_MULTIPLY) SerialTinyUSB.print("<KEYPAD_MUL>");
-  if (code == HID_KEY_KEYPAD_SUBTRACT) SerialTinyUSB.print("<KEYPAD_SUB>");
-  if (code == HID_KEY_KEYPAD_ADD) SerialTinyUSB.print("<KEYPAD_ADD>");
-  if (code == HID_KEY_KEYPAD_DECIMAL) SerialTinyUSB.print("<KEYPAD_DECIMAL>");
+  if (code == HID_KEY_ARROW_RIGHT) tbfa_print(String("<ARROWRIGHT>"));
+  if (code == HID_KEY_ARROW_LEFT) tbfa_print(String("<ARROWLEFT>"));
+  if (code == HID_KEY_ARROW_DOWN) tbfa_print(String("<ARROWDOWN>"));
+  if (code == HID_KEY_ARROW_UP) tbfa_print(String("<ARROWUP>"));
+  if (code == HID_KEY_HOME) tbfa_print(String("<HOME>"));
+  if (code == HID_KEY_KEYPAD_1) tbfa_print(String("<KEYPAD_1>"));
+  if (code == HID_KEY_KEYPAD_2) tbfa_print(String("<KEYPAD_2>"));
+  if (code == HID_KEY_KEYPAD_3) tbfa_print(String("<KEYPAD_3>"));
+  if (code == HID_KEY_KEYPAD_4) tbfa_print(String("<KEYPAD_4>"));
+  if (code == HID_KEY_KEYPAD_5) tbfa_print(String("<KEYPAD_5>"));
+  if (code == HID_KEY_KEYPAD_6) tbfa_print(String("<KEYPAD_6>"));
+  if (code == HID_KEY_KEYPAD_7) tbfa_print(String("<KEYPAD_7>"));
+  if (code == HID_KEY_KEYPAD_8) tbfa_print(String("<KEYPAD_8>"));
+  if (code == HID_KEY_KEYPAD_9) tbfa_print(String("<KEYPAD_9>"));
+  if (code == HID_KEY_KEYPAD_0) tbfa_print(String("<KEYPAD_0>"));
+  if (code == HID_KEY_F1) tbfa_print(String("<F1>"));
+  if (code == HID_KEY_F2) tbfa_print(String("<F2>"));
+  if (code == HID_KEY_F3) tbfa_print(String("<F3>"));
+  if (code == HID_KEY_F4) tbfa_print(String("<F4>"));
+  if (code == HID_KEY_F5) tbfa_print(String("<F5>"));
+  if (code == HID_KEY_F6) tbfa_print(String("<F6>"));
+  if (code == HID_KEY_F7) tbfa_print(String("<F7>"));
+  if (code == HID_KEY_F8) tbfa_print(String("<F8>"));
+  if (code == HID_KEY_F9) tbfa_print(String("<F9>"));
+  if (code == HID_KEY_F10) tbfa_print(String("<F10>"));
+  if (code == HID_KEY_F11) tbfa_print(String("<F11>"));
+  if (code == HID_KEY_F12) tbfa_print(String("<F12>"));
+  if (code == HID_KEY_PRINT_SCREEN) tbfa_print(String("<PRNT>"));
+  if (code == HID_KEY_SCROLL_LOCK) tbfa_print(String("<SCRLL>"));
+  if (code == HID_KEY_PAUSE) tbfa_print(String("<PAUSE>"));
+  if (code == HID_KEY_INSERT) tbfa_print(String("<INSERT>"));
+  if (code == HID_KEY_PAGE_UP) tbfa_print(String("<PAGEUP>"));
+  if (code == HID_KEY_DELETE) tbfa_print(String("<DEL>"));
+  if (code == HID_KEY_END) tbfa_print(String("<END>"));
+  if (code == HID_KEY_PAGE_DOWN) tbfa_print(String("<PAGEDOWN>"));
+  if (code == HID_KEY_NUM_LOCK) tbfa_print(String("<ARROWRIGHT>"));
+  if (code == HID_KEY_KEYPAD_DIVIDE) tbfa_print(String("<KEYPAD_DIV>"));
+  if (code == HID_KEY_KEYPAD_MULTIPLY) tbfa_print(String("<KEYPAD_MUL>"));
+  if (code == HID_KEY_KEYPAD_SUBTRACT) tbfa_print(String("<KEYPAD_SUB>"));
+  if (code == HID_KEY_KEYPAD_ADD) tbfa_print(String("<KEYPAD_ADD>"));
+  if (code == HID_KEY_KEYPAD_DECIMAL) tbfa_print(String("<KEYPAD_DECIMAL>"));
 }
 
 static void process_mouse_report(hid_mouse_report_t const* report) {
@@ -804,17 +865,18 @@ static void process_mouse_report(hid_mouse_report_t const* report) {
   //------------- button state  -------------//
   uint8_t button_changed_mask = report->buttons ^ prev_report.buttons;
   if (button_changed_mask & report->buttons) {
-    SerialTinyUSB.printf("MOUSE: %c%c%c ",
+        sprintf(bufferx, "MOUSE: %c%c%c ",
                          report->buttons & MOUSE_BUTTON_LEFT ? 'L' : '-',
                          report->buttons & MOUSE_BUTTON_MIDDLE ? 'M' : '-',
                          report->buttons & MOUSE_BUTTON_RIGHT ? 'R' : '-');
+        tbfa_println(bufferx);
   }
-
   cursor_movement(report->x, report->y, report->wheel);
 }
 
 void cursor_movement(int8_t x, int8_t y, int8_t wheel) {
-  SerialTinyUSB.printf("(%d %d %d)\r\n", x, y, wheel);
+        sprintf(bufferx, "(%d %d %d)", x, y, wheel);
+        tbfa_println(bufferx);
 }
 
 // END of BADUSB detector section
@@ -826,28 +888,34 @@ void cursor_movement(int8_t x, int8_t y, int8_t wheel) {
 // Invoked when a device with MassStorage interface is mounted
 void tuh_msc_mount_cb(uint8_t dev_addr) {
   printout("massdev");
-  SerialTinyUSB.printf("Mass Device attached, address = %d\r\n", dev_addr);
+        sprintf(bufferx, "Mass Device attached, address = %d", dev_addr);
+        tbfa_println(bufferx);
 }
 
 // Invoked when a device with MassStorage interface is unmounted
 void tuh_msc_umount_cb(uint8_t dev_addr) {
-  SerialTinyUSB.printf("Mass Device unmounted, address = %d\r\n", dev_addr);
+        sprintf(bufferx, "Mass Device unmounted, address = %d", dev_addr);
+        tbfa_println(bufferx);
 }
 
 // Invoked when a device with CDC (Communication Device Class) interface is mounted
 void tuh_cdc_mount_cb(uint8_t idx) {
   printout("cdcdev");
-  SerialTinyUSB.printf("CDC Device attached, idx = %d\r\n", idx);
+        sprintf(bufferx, "CDC Device attached, idx = %d", idx);
+        tbfa_println(bufferx);
 }
 
 // Invoked when a device with CDC (Communication Device Class) interface is unmounted
 void tuh_cdc_umount_cb(uint8_t idx) {
-  SerialTinyUSB.printf("CDC Device unmounted, idx = %d\r\n", idx);
+        sprintf(bufferx, "CDC Device unmounted, idx = %d", idx);
+        tbfa_println(bufferx);
 }
 
 // END of OTHER Host devices detector section
 
 
+// START TryBreakFixAgain MOD Functions
+#if defined(TBFA_TRAFFIC)
 // START TryBreakFixAgain TrafficLight Functions
 void tbfa_trafficlight(int tlight){
   
@@ -908,5 +976,86 @@ void tuh_umount_cb(uint8_t dev_addr)
   tbfa_lightbreak = false;
   tbfa_trafficlight(0);
 }
+// END TryBreakFixAgain TrafficLight Functions
+#endif
 
-//END TryBreakFixAgain TrafficLight Functions
+// START TryBreakFixAgain PRINT Functions
+void tbfa_print(String in){
+  SerialTinyUSB.print(in);
+  tbfa_datalogger(in, 0);
+}
+void tbfa_println(String in){
+  SerialTinyUSB.println(in);
+  tbfa_datalogger(in, 1);
+}
+void tbfa_flush(){
+  SerialTinyUSB.flush();
+}
+// END TryBreakFixAgain PRINT Functions
+
+// START TryBreakFixAgain LOGGER Function for SD and WiFi
+void tbfa_datalogger(String output, int where){
+#if defined(TBFA_SDLOG)
+  // START TryBreakFixAgain LOGGER SD-CARD
+  dataLog = SD.open("datalog.txt", FILE_WRITE);
+    if (dataLog) {
+      if(where==0){
+        dataLog.print(output);
+      }else{
+        dataLog.println(output);
+      }
+      dataLog.flush();
+      dataLog.close();
+    }else{
+      SerialTinyUSB.println("Card not Ready");
+    }
+    // START TryBreakFixAgain LOGGER SD-CARD
+#endif      
+}
+// END TryBreakFixAgain LOGGER Function for SD and WiFi
+
+#if defined(TBFA_LIPO)
+// START TryBreakFixAgain Battery Function for Pimoroni Pico LiPo 
+void tbfa_batteryPack() {
+    if (tbfa_batcount == 0) {
+        if (tbfa_jumpbat == false) {
+            tbfa_batValue = analogRead(tbfa_batPin);
+            float tbfa_voltage = tbfa_batValue * tbfa_conversion_factor;
+            float tbfa_percentage = 100 * ((tbfa_voltage - tbfa_empty_battery) / (tbfa_full_battery - tbfa_empty_battery));
+            if (tbfa_percentage > 100) {
+                tbfa_percentage = 100;
+            } else if (tbfa_percentage < 0) {
+                tbfa_percentage = 0;
+            }
+            int oldCursor = display.getCursorY();
+            display.setCursor(0, 0);
+            display.fillRect(0, 0, display.width(), 8, SSD1306_BLACK);
+            if (digitalRead(tbfa_usbPower) == 1) {
+                display.print("usbValve          USB");
+                tbfa_charging = 1;
+            } else {
+                display.print("usbValve");
+                int cleanprecent = tbfa_percentage;
+                if (cleanprecent >= 99) {
+                    display.print("         ");
+                } else if (cleanprecent >= 9) {
+                    display.print("          ");
+                } else {
+                    display.print("           ");
+                }
+
+                display.print(cleanprecent);
+                display.println("% ");
+                tbfa_charging = 0;
+            }
+            display.setCursor(0, oldCursor);
+            display.display();
+        }
+    } else if (tbfa_batcount == 10000) {
+        tbfa_batcount = -1;
+    }
+    tbfa_batcount++;
+}
+// END TryBreakFixAgain Battery Function for Pimoroni Pico LiPo 
+#endif
+//END TryBreakFixAgain MOD Functions

@@ -8,5 +8,7 @@ USB-Connector:		https://www.amazon.com/dp/B07VBRTDVF
 
 WS2812B DOT:		https://www.amazon.com/dp/B01DC0J3UM
 
+SPI SD-Card Adapter	https://www.amazon.com/dp/B08C4WY2WR
+
 
 

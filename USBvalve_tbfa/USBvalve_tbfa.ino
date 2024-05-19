@@ -4,7 +4,7 @@
   
   Original written by Cesare Pizzi
   https://github.com/cecio/USBvalve
-  It´s a nice Guy!
+  It�s a nice Guy!
 
   All changes can be found via tbfa and TryBreakFixAgain
   
@@ -183,7 +183,7 @@ bool activeState = false;
 //
 // USBvalve globals
 //
-#define VERSION "USBvalve-0.18.2 Mod"
+#define VERSION "USBvalve-0.18.3 Mod"
 boolean readme = false;
 boolean autorun = false;
 boolean written = false;
@@ -268,6 +268,14 @@ void setup() {
   tbfa_dictonary["espip"][1] = "1";
   // END TryBreakFixAgain Language definitions
 #endif
+
+#if defined(TBFA_LIPO)
+  // START TryBreakFixAgain Battery readings config
+  analogReadResolution(16);
+  pinMode(tbfa_usbPower, INPUT);
+  // END TryBreakFixAgain Battery readings config
+#endif
+
   // Change all the USB Pico settings
   TinyUSBDevice.setID(USB_VENDORID, USB_PRODUCTID);
   TinyUSBDevice.setProductDescriptor(USB_DESCRIPTOR);

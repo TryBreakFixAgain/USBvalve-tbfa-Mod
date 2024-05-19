@@ -6,9 +6,14 @@ Display SSD1306 I2C	https://www.amazon.com/dp/B0BWJFVYZR
 
 USB-Connector:		https://www.amazon.com/dp/B07VBRTDVF
 
-WS2812B DOT:		https://www.amazon.com/dp/B01DC0J3UM
+Additional:
+WS2812B DOT:		https://www.amazon.com/dp/B01DC0J3UM  for TrafficLight Mod
 
-SPI SD-Card Adapter	https://www.amazon.com/dp/B08C4WY2WR
+SPI SD-Card Adapter	https://www.amazon.com/dp/B08C4WY2WR  for  SD-Logger
+
+Pushbutton:		https://www.amazon.com/dp/B01CGMP9GY  for  WiFi HTML Output ESP-01
+
+ESP01 (ESP8266)	https://www.amazon.com/dp/B010N1ROQS  for  WiFi HTML Output ESP-01
 
 
 

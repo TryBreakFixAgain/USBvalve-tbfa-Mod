@@ -40,6 +40,7 @@
  * #define TBFA_SDLOG = SD-CARD Logger Mod
  * #define TBFA_ONBORDLED = Use Onbord LED on Pico
  * #define TBFA_ONBORDLEDW = Use Onbord LED on PicoW
+ * #define TBFA_ESP01SRV = Use ESP01 as Webserver
  */
 
 //#define TBFA_TRAFFIC
@@ -47,6 +48,7 @@
 //#define TBFA_SDLOG
 //#define TBFA_ONBORDLED
 //#define TBFA_ONBORDLEDW
+//#define TBFA_ESP01SRV
 
 #include <pio_usb.h>
 #include "Adafruit_TinyUSB.h"
@@ -138,7 +140,7 @@ File dataLog;
  */
 
 #define HOST_PIN_DP 14      // Pin used as D+ for host, D- = D+ + 1
-#define LANGUAGE_ID 0x0409  // English
+#define LANGUAGE_ID 0x0407  // English
 
 // USB Host object
 Adafruit_USBH_Host USBHost;
@@ -181,7 +183,7 @@ bool activeState = false;
 //
 // USBvalve globals
 //
-#define VERSION "USBvalve-0.18.1 Mod"
+#define VERSION "USBvalve-0.18.2 Mod"
 boolean readme = false;
 boolean autorun = false;
 boolean written = false;
@@ -241,6 +243,7 @@ void setup() {
   tbfa_dictonary["cardok"][0] ="[+] SD OK";
   tbfa_dictonary["cardko"][0] ="[!] SD ERROR";
   tbfa_dictonary["bigfile"][0] ="[!] BIG LOG";
+  tbfa_dictonary["espip"][0] ="";
   // END TryBreakFixAgain Language definitions
 
 #if defined(TBFA_TRAFFIC)
@@ -262,6 +265,7 @@ void setup() {
   tbfa_dictonary["cardok"][1] = 0;
   tbfa_dictonary["cardko"][1] = 0;
   tbfa_dictonary["bigfile"][1] = 3;
+  tbfa_dictonary["espip"][1] = "1";
   // END TryBreakFixAgain Language definitions
 #endif
   // Change all the USB Pico settings
@@ -315,6 +319,14 @@ void setup() {
   display.setTextSize(1);
   cls();  // Clear display
 
+#if defined(TBFA_ESP01SRV)
+  // START TryBreakFixAgain Serial on PIN 8/9
+  Serial2.setRX(9);
+  Serial2.setTX(8);
+  Serial2.begin(115200);
+  // END TryBreakFixAgain Serial on PIN 8/9
+#endif
+
 #if defined(TBFA_TRAFFIC)
   // START TryBreakFixAgain TrafficLight LED-DEMO
   tbfa_trafficlightstart();
@@ -348,7 +360,6 @@ void setup() {
     if (SD.exists("datalog.txt")) {
       File fproof;
       fproof=SD.open("datalog.txt");
-      Serial.print((int)fproof.size());
       if((int)fproof.size() > 5242880){
         printout("bigfile");
         SerialTinyUSB.println("datalog.txt bigger then 5MB.");
@@ -367,6 +378,7 @@ void setup() {
   gpio_set_dir(LED_PIN, GPIO_OUT);
   gpio_put(LED_PIN, 1);
 #endif
+
 #if defined(TBFA_ONBORDLEDW)
   // Set up led PIN PicoW
   pinMode(LED_BUILTIN, OUTPUT);
@@ -455,12 +467,32 @@ void loop() {
 
   if (BOOTSEL) {
     printout("reset");
+#if defined(TBFA_ESP01SRV)
+  // END TryBreakFixAgain Serial on PIN 8/9
+    Serial2.println("ESPRESET");
+  // END TryBreakFixAgain Serial on PIN 8/9
+#endif
     swreset();
   }
 #if defined(TBFA_LIPO)
 // START TryBreakFixAgain Battery check
   tbfa_batteryPack();
 // END TryBreakFixAgain Battery check
+#endif
+#if defined(TBFA_ESP01SRV)
+  if (Serial2.available() > 0) {
+    String tempser = Serial2.readString();
+    if(tempser.indexOf("IP: ") > -1 ){
+      String tempser2= tempser.substring(tempser.indexOf("IP: ") +4 );
+      tempser2.trim();
+      if(tempser2!=""){
+        tbfa_dictonary["espip"][0] = tempser2;
+        printout("espip");
+        tempser2="";
+      }
+    } 
+  }
+  // END TryBreakFixAgain Serial on PIN 8/9
 #endif
 }
 
@@ -597,6 +629,7 @@ void printout(const char *ctrl)
     String str=tbfa_dictonary[ctrl][0];
     checkAndScroll();
     display.println(str);
+    tbfa_println(str);
   }else{
     // Printout first 2 Rows on cls();
     display.setCursor(0, 0);
@@ -614,7 +647,7 @@ void printout(const char *ctrl)
   if(tbfa_led == 4){
     tbfa_lightbreak = true;
   }
-  if(ctrl == "selfok" || ctrl == "autorun"){
+  if(ctrl == "selfok" || ctrl == "autorun" || ctrl == "espip"){
     delay(2000);
     tbfa_trafficlight(0);
   }
@@ -990,6 +1023,11 @@ void tbfa_println(String in){
 }
 void tbfa_flush(){
   SerialTinyUSB.flush();
+#if defined(TBFA_ESP01SRV)
+  // START TryBreakFixAgain Serial on PIN 8/9
+  Serial2.flush();
+  // END TryBreakFixAgain Serial on PIN 8/9
+#endif 
 }
 // END TryBreakFixAgain PRINT Functions
 
@@ -998,19 +1036,28 @@ void tbfa_datalogger(String output, int where){
 #if defined(TBFA_SDLOG)
   // START TryBreakFixAgain LOGGER SD-CARD
   dataLog = SD.open("datalog.txt", FILE_WRITE);
-    if (dataLog) {
-      if(where==0){
-        dataLog.print(output);
-      }else{
-        dataLog.println(output);
-      }
-      dataLog.flush();
-      dataLog.close();
+  if (dataLog) {
+    if(where==0){
+      dataLog.print(output);
     }else{
-      SerialTinyUSB.println("Card not Ready");
+      dataLog.println(output);
     }
-    // START TryBreakFixAgain LOGGER SD-CARD
-#endif      
+    dataLog.flush();
+    dataLog.close();
+  }else{
+    SerialTinyUSB.println("Card not Ready");
+  }
+    // END TryBreakFixAgain LOGGER SD-CARD
+#endif 
+#if defined(TBFA_ESP01SRV)
+  // START TryBreakFixAgain Serial on PIN 8/9
+  if(where==0){
+    Serial2.print(output);
+  }else{
+    Serial2.println(output);
+  }
+  // END TryBreakFixAgain Serial on PIN 8/9
+#endif   
 }
 // END TryBreakFixAgain LOGGER Function for SD and WiFi
 

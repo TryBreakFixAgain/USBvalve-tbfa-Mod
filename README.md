@@ -10,6 +10,8 @@ I made some modifications to the USBvalve to fulfil the needs of my friends and 
 To enable **SD-Card Logging**, the entire serial output was redirected.<br>
 In addition, there is the comfortable indication via a Ws2812b LED in a **Traffic Light System**.<br>
 Additional you can create an independent system with a **Pimoroni Pico Lipo** and the LiPo-Mod.<br>
+To ensure complete wireless debugging, the **WiFi HTML Output ESP-01 Mod** is used.<br>
+As the PicoW unfortunately does not provide enough RAM, an ESP01 takes over the server tasks.<br>
 <br>
 Compatibility with the Pi Pico Watch has been removed.
 
@@ -27,6 +29,7 @@ I decided against a custom PCB and used standard components.
 * [Mappings No Lipo](#mappings-no-lipo)
 * [Mappings Pimoroni Pico LiPo](#mappings-lipo-pimoroni-pico-lipo)
 * [Additional Mappings SD-Logger](#mappings-sd-logger)
+* [Additional Mappings ESP01-Server](#mappings-esp01-server)
 * [LED meanings](#led-meanings)
 * [Firmware Naming](#firmware-naming)
 * [Customize Firmware](#customize-firmware)
@@ -42,7 +45,10 @@ I decided against a custom PCB and used standard components.
 - Fixing the first 2 lines
 - LiPo Mod
 - SD-Card Logger
+- WiFi HTML Output ESP-01 (ESP8266)
 - PicoW LED Fix (No-WiFi Support)
+
+**More information can be found on the wiki**
   
 
 <br><br>
@@ -157,6 +163,23 @@ STL-Files could be fond in the STL folder.
 <img src="./pictures/withSD.jpg" alt="USBvalve tbfa without SD" width="200px"/>
 <br><br>
 
+<br><br>
+
+### *Mappings ESP01-Server:*
+> ESP01 (ESP8266) Server
+>
+> - PIN11 (GPIO8) of Pi --> RX of ESP01 
+> - PIN12 (GPIO9) of Pi --> TX of ESP01 
+> - PIN18 (GND) of Pi --> GND  of ESP01
+> - PIN36 (3V3OUT) of Pi --> 3.3 VCC of ESP01
+> - Push Button --> GPIO0 of ESP01 
+> - Push Button --> PIN18 (GND) of Pi
+>
+
+<br><br>
+<img src="./pictures/withesp.jpg" alt="USBvalve tbfa without SD" width="200px"/>
+<br><br>
+
 ### *LED meanings:*
 - Red: Things are happening that must not happen.
 - Green: Everything is OK
@@ -167,29 +190,50 @@ STL-Files could be fond in the STL folder.
 
 ### *Firmware Naming:*
 >
->USBvalve_tbfa-x.xx.x-32NoMod = No Mods, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32NoMod = No Mods, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64NoMod = No Mods, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32Tr = TrafficLight, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32Tr = TrafficLight, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64Tr = TrafficLight, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32SdTr = SD-Logger, TrafficLight, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32SdTr = SD-Logger, TrafficLight, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64SdTr = SD-Logger, TrafficLight, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32Sd = SD-Logger, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32Sd = SD-Logger, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64Sd = SD-Logger, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32LiSdTr = LiPo, SD-Logger, TrafficLight, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32LiSdTr = LiPo, SD-Logger, TrafficLight, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64LiSdTr = LiPo, SD-Logger, TrafficLight, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32LiSd = LiPo, SD-Logger, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32LiSd = LiPo, SD-Logger, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64LiSd = LiPo, SD-Logger, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32LiTr = LiPo, TrafficLight, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32LiTr = LiPo, TrafficLight, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64LiTr = LiPo, TrafficLight, 64Pixel Display
 >
->USBvalve_tbfa-x.xx.x-32Li = LiPo, 32Pixel Display
+>USBvalve_tbfa-x.xx.x-32Li = LiPo, 32Pixel Display<br>
 >USBvalve_tbfa-x.xx.x-64Li = LiPo, 32Pixel Display
+>
+>USBvalve_tbfa-x.xx.x-32Wi = WiFi, 32Pixel Display<br>
+>USBvalve_tbfa-x.xx.x-64Wi = WiFi, 64Pixel Display
+>
+>USBvalve_tbfa-x.xx.x-32SdTrWI = SD-Logger, TrafficLight, WiFi, 32Pixel Display<br>
+>USBvalve_tbfa-x.xx.x-64SdTrWI = SD-Logger, TrafficLight, WiFi, 64Pixel Display
+>
+>USBvalve_tbfa-x.xx.x-32SdWI = SD-Logger, WiFi, 32Pixel Display<br>
+>USBvalve_tbfa-x.xx.x-64SdWI = SD-Logger, WiFi, 64Pixel Display
+>
+>USBvalve_tbfa-x.xx.x-32LiSdTrWI = LiPo, SD-Logger, TrafficLight, WiFi, 32Pixel Display<br>
+>USBvalve_tbfa-x.xx.x-64LiSdTrWI = LiPo, SD-Logger, TrafficLight, WiFi, 64Pixel Display
+>
+>USBvalve_tbfa-x.xx.x-32LiSdWI = LiPo, SD-Logger, WiFi, 32Pixel Display<br>
+>USBvalve_tbfa-x.xx.x-64LiSdWI = LiPo, SD-Logger, WiFi, 64Pixel Display
+>
+>USBvalve_tbfa-x.xx.x-32LiTrWI = LiPo, TrafficLight, WiFi, 32Pixel Display<br>
+>USBvalve_tbfa-x.xx.x-64LiTrWI = LiPo, TrafficLight, WiFi, 64Pixel Display
+>
+>USBvalve_tbfa-x.xx.x-32LiWI = LiPo, WiFi, 32Pixel Display<br>
+>USBvalve_tbfa-x.xx.x-64LiWI = LiPo, WiFi, 32Pixel Display
 >
 
 <br><br>
@@ -204,6 +248,7 @@ You can build your own firmware.
  * #define TBFA_SDLOG = SD-CARD Logger Mod
  * #define TBFA_ONBORDLED = Use Onbord LED on Pico
  * #define TBFA_ONBORDLEDW = Use Onbord LED on PicoW
+ * #define TBFA_ESP01SRV = Use ESP01 as Webserver
  */
 
 //#define TBFA_TRAFFIC
@@ -211,6 +256,7 @@ You can build your own firmware.
 //#define TBFA_SDLOG
 //#define TBFA_ONBORDLED
 //#define TBFA_ONBORDLEDW
+//#define TBFA_ESP01SRV
 ```
 <br>
 To build the standard one I used:
@@ -221,6 +267,8 @@ To build the standard one I used:
 - ArduinoJson 7.0.4
 - Adafruit NeoPixel 1.12.2
 - SD by Arduino, Sparkfun 1.2.4
+
+**Information on customising the ESP01 firmware can be found in the wiki**
 
 <br><br>
 
@@ -248,6 +296,8 @@ To flash the firmware, follow these steps:
 - wait few seconds until the mounted folder disappear
 
 It's done!
+
+**Information on flashing the ESP01 can be found in the wiki**
 
 <br><br>
 
